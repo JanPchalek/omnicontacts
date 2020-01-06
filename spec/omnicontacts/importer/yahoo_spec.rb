@@ -38,43 +38,35 @@ describe OmniContacts::Importer::Yahoo do
       }' }
 
     let(:yahoo) { OmniContacts::Importer::Yahoo.new({}, "consumer_key", "consumer_secret") }
+    let(:token) { "token" }
+    let(:token_type) { nil }
 
     before(:each) do
       yahoo.instance_variable_set(:@env, {})
     end
 
     it "should request the contacts by specifying all required parameters" do
-      yahoo.should_receive(:fetch_access_token).and_return(["access_token", "access_token_secret", "guid"])
+      yahoo.should_receive(:session).and_return('')
 
-      yahoo.should_receive(:https_get) do |host, path, params|
+      yahoo.should_receive(:https_get) do |host, path, params, headers|
+        headers["Authorization"].should eq("Bearer #{token}")
         params[:format].should eq("json")
-        params[:oauth_consumer_key].should eq("consumer_key")
-        params[:oauth_nonce].should_not be_nil
-        params[:oauth_signature_method].should eq("HMAC-SHA1")
-        params[:oauth_timestamp].should_not be_nil
-        params[:oauth_token].should eq("access_token")
-        params[:oauth_version].should eq("1.0")
         self_response
       end
 
-      yahoo.should_receive(:https_get) do |host, path, params|
+      yahoo.should_receive(:https_get) do |host, path, params, headers|
+        headers["Authorization"].should eq("Bearer #{token}")
         params[:format].should eq("json")
-        params[:oauth_consumer_key].should eq("consumer_key")
-        params[:oauth_nonce].should_not be_nil
-        params[:oauth_signature_method].should eq("HMAC-SHA1")
-        params[:oauth_timestamp].should_not be_nil
-        params[:oauth_token].should eq("access_token")
-        params[:oauth_version].should eq("1.0")
         contacts_as_json
       end
-      yahoo.fetch_contacts_from_token_and_verifier "auth_token", "auth_token_secret", "oauth_verifier"
+      yahoo.fetch_contacts_using_access_token token, token_type
     end
 
     it "should correctly parse id, name,email,gender, birthday, snailmail address, image source and relation for contact and logged in user" do
-      yahoo.should_receive(:fetch_access_token).and_return(["access_token", "access_token_secret", "guid"])
+      yahoo.should_receive(:session).and_return('')
       yahoo.should_receive(:https_get).and_return(self_response)
       yahoo.should_receive(:https_get).and_return(contacts_as_json)
-      result = yahoo.fetch_contacts_from_token_and_verifier "auth_token", "auth_token_secret", "oauth_verifier"
+      result = yahoo.fetch_contacts_using_access_token token, token_type
 
       result.size.should be(1)
       result.first[:id].should eq('10')
@@ -93,20 +85,20 @@ describe OmniContacts::Importer::Yahoo do
     end
 
     it "should return an empty list of contacts" do
+      yahoo.should_receive(:session).and_return('')
       empty_contacts_list = '{"contacts": {"start":0, "count":0}}'
-      yahoo.should_receive(:fetch_access_token).and_return(["access_token", "access_token_secret", "guid"])
       yahoo.should_receive(:https_get).and_return(self_response)
       yahoo.should_receive(:https_get).and_return(empty_contacts_list)
-      result = yahoo.fetch_contacts_from_token_and_verifier "auth_token", "auth_token_secret", "oauth_verifier"
+      result = yahoo.fetch_contacts_using_access_token token, token_type
 
       result.should be_empty
     end
 
     it "should correctly parse and set logged in user information" do
-      yahoo.should_receive(:fetch_access_token).and_return(["access_token", "access_token_secret", "guid"])
+      yahoo.should_receive(:session).and_return('')
       yahoo.should_receive(:https_get).and_return(self_response)
       yahoo.should_receive(:https_get).and_return(contacts_as_json)
-      yahoo.fetch_contacts_from_token_and_verifier "auth_token", "auth_token_secret", "oauth_verifier"
+      yahoo.fetch_contacts_using_access_token token, token_type
 
       user = yahoo.instance_variable_get(:@env)["omnicontacts.user"]
       user.should_not be_nil
